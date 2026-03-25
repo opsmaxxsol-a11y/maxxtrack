@@ -41,3 +41,12 @@ app.post("/notify", (req,res)=>{
 });
 
 app.listen(5000, ()=>console.log("Pro MaxxTrack running"));
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongoose": "^7.0.0",
+    "cors": "^2.8.5"
+  }
+}
