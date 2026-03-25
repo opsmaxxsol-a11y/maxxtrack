@@ -116,3 +116,17 @@ if ('serviceWorker' in navigator) {
 
 </body>
 </html>
+async function checkAssignment(id) {
+  const res = await fetch(`https://maxxtrack.onrender.com/track/${id}`);
+  const data = await res.json();
+
+  if (data && data.status === "Assigned") {
+    document.getElementById("status").innerText =
+      `📦 Assigned: ${data.destination}`;
+  }
+}
+
+// Call every 5 sec
+setInterval(() => {
+  if (trackingId) checkAssignment(trackingId);
+}, 5000);
