@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MaxxTrack Admin</title>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCm-ajrSzxq5QJ5O8Tf7f-FvaSGjEmfSvg"></script>
+</head>
+
+<body style="font-family:Arial; text-align:center">
+
+<h1>🚚 MaxxTrack Admin Dashboard</h1>
+
+<input id="searchId" placeholder="Search Tracking ID"/>
+<button onclick="search()">Search</button>
+
+<div id="map" style="height:500px; width:90%; margin:auto; margin-top:20px;"></div>
+
+<table border="1" style="margin:auto; margin-top:20px; width:90%">
+  <thead>
+    <tr>
+      <th>Tracking ID</th>
+      <th>Truck</th>
+      <th>Status</th>
+      <th>Location</th>
+    </tr>
+  </thead>
+  <tbody id="table"></tbody>
+</table>
+
+<script>
+let map;
+let markers = [];
+
+const API = "https://maxxtrack.onrender.com";
+
+function initMap() {
+  map = new google.maps.Map(document.getElementById("map"), {
+    zoom: 5,
+    center: { lat: 20.5937, lng: 78.9629 } // India center
+  });
+}
+
+async function loadAll() {
+  const res = await fetch(`${API}/all`);
+  const data = await res.json();
+
+  document.getElementById("table").innerHTML = "";
+  markers.forEach(m => m.setMap(null));
+  markers = [];
+
+  data.forEach(truck => {
+    const row = `
+      <tr>
+        <td>${truck.trackingId}</td>
+        <td>${truck.truckNo || "N/A"}</td>
+        <td>${truck.status}</td>
+        <td>${truck.location}</td>
+      </tr>
+    `;
+    document.getElementById("table").innerHTML += row;
+
+    if (truck.location) {
+      const [lat, lng] = truck.location.split(",");
+      const marker = new google.maps.Marker({
+        position: { lat: parseFloat(lat), lng: parseFloat(lng) },
+        map: map,
+        title: truck.trackingId
+      });
+      markers.push(marker);
+    }
+  });
+}
+
+async function search() {
+  const id = document.getElementById("searchId").value;
+  const res = await fetch(`${API}/track/${id}`);
+  const data = await res.json();
+
+  alert(JSON.stringify(data, null, 2));
+}
+
+// Auto refresh
+setInterval(loadAll, 5000);
+
+window.onload = () => {
+  initMap();
+  loadAll();
+};
+</script>
+
+</body>
+</html>
