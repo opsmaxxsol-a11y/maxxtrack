@@ -133,3 +133,25 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+// ASSIGN DRIVER
+app.post("/assign", async (req, res) => {
+  try {
+    const { trackingId, truckNo, destination } = req.body;
+
+    const truck = await Truck.findOneAndUpdate(
+      { trackingId },
+      {
+        truckNo,
+        destination,
+        status: "Assigned",
+        updatedAt: new Date()
+      },
+      { new: true, upsert: true }
+    );
+
+    res.json({ message: "Driver assigned", data: truck });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
