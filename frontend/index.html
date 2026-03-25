@@ -1,37 +1,90 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>MaxxTrack</title>
+  <title>MaxxTrack Pro</title>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCm-ajrSzxq5QJ5O8Tf7f-FvaSGjEmfSvg"></script>
 </head>
-<body style="text-align:center; font-family: Arial; margin-top:50px;">
 
-  <h1>🚚 MaxxTrack</h1>
+<body style="text-align:center; font-family:Arial">
 
-  <input id="trackId" placeholder="Enter Tracking ID" />
-  <button onclick="track()">Track</button>
+<h1>🚚 MaxxTrack Pro</h1>
 
-  <div id="result" style="margin-top:20px;"></div>
+<input id="trackId" placeholder="Enter Tracking ID"/>
+<button onclick="track()">Track</button>
 
-  <script>
-    const API = "https://maxxtrack.onrender.com";
+<div id="map" style="height:500px; width:90%; margin:auto; margin-top:20px;"></div>
 
-    async function track() {
-      const id = document.getElementById("trackId").value;
+<div id="info"></div>
 
-      try {
-        const res = await fetch(`${API}/track/${id}`);
-        const data = await res.json();
+<script>
+let map, marker, directionsService, directionsRenderer;
 
-        document.getElementById("result").innerHTML = `
-          <h3>Status: ${data.status}</h3>
-          <p>Truck: ${data.truckNo}</p>
-          <p>Location: ${data.location}</p>
-        `;
-      } catch (err) {
-        document.getElementById("result").innerHTML = "Error fetching data";
-      }
+const API = "https://maxxtrack.onrender.com";
+
+async function track() {
+  const id = document.getElementById("trackId").value;
+
+  const res = await fetch(`${API}/track/${id}`);
+  const data = await res.json();
+
+  if (!data.location) {
+    alert("Waiting for driver...");
+    return;
+  }
+
+  const [lat, lng] = data.location.split(",");
+  const origin = { lat: parseFloat(lat), lng: parseFloat(lng) };
+
+  // Destination (can be dynamic later)
+  const destination = { lat: 19.0760, lng: 72.8777 }; // Mumbai
+
+  if (!map) {
+    map = new google.maps.Map(document.getElementById("map"), {
+      zoom: 7,
+      center: origin
+    });
+
+    marker = new google.maps.Marker({
+      position: origin,
+      map: map
+    });
+
+    directionsService = new google.maps.DirectionsService();
+    directionsRenderer = new google.maps.DirectionsRenderer();
+    directionsRenderer.setMap(map);
+  }
+
+  // Update marker
+  marker.setPosition(origin);
+  map.setCenter(origin);
+
+  // Route + ETA
+  directionsService.route({
+    origin,
+    destination,
+    travelMode: "DRIVING"
+  }, (result, status) => {
+    if (status === "OK") {
+      directionsRenderer.setDirections(result);
+
+      const leg = result.routes[0].legs[0];
+
+      document.getElementById("info").innerHTML = `
+        <h3>Status: ${data.status}</h3>
+        <p>Truck: ${data.truckNo}</p>
+        <p>ETA: ${leg.duration.text}</p>
+        <p>Distance: ${leg.distance.text}</p>
+      `;
     }
-  </script>
+  });
+}
+
+// Auto refresh every 5 sec
+setInterval(() => {
+  const id = document.getElementById("trackId").value;
+  if (id) track();
+}, 5000);
+</script>
 
 </body>
 </html>
