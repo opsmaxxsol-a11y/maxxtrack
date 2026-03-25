@@ -1,6 +1,5 @@
 require("dotenv").config();
 const express = require("express");
-const mongoose = require("mongoose");
 const cors = require("cors");
 
 const app = express();
@@ -9,66 +8,85 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// MongoDB connect
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-.then(() => console.log("MongoDB Connected"))
-.catch(err => console.log("Mongo Error:", err));
+// 🔥 In-memory storage (no DB)
+let liveLocation = {};
 
-// Schema
-const truckSchema = new mongoose.Schema({
-  truckNo: String,
-  location: String,
-  status: String,
-  trackingId: String,
-  destination: String
+// ✅ Health Check
+app.get("/", (req, res) => {
+  res.send("MaxxTrack LIVE API Running 🚚");
 });
 
-const Truck = mongoose.model("Truck", truckSchema);
 
-// Save GPS
-app.post("/location/:id", async (req, res) => {
+// =========================
+// 📍 DRIVER LOCATION API
+// =========================
+app.post("/location/:id", (req, res) => {
   try {
     const { lat, lng } = req.body;
 
-    const truck = await Truck.findOneAndUpdate(
-      { trackingId: req.params.id },
-      { location: `${lat},${lng}` },
-      { new: true }
-    );
-
-    if (!truck) {
-      return res.status(404).json({ message: "Truck not found" });
+    if (!lat || !lng) {
+      return res.status(400).json({ message: "Latitude & Longitude required" });
     }
 
-    res.json(truck);
+    // Save live location
+    liveLocation[req.params.id] = {
+      lat,
+      lng,
+      status: "In Transit",
+      truckNo: "LIVE-TRUCK"
+    };
+
+    res.json({
+      message: "Location updated successfully",
+      trackingId: req.params.id
+    });
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get tracking
-app.get("/track/:id", async (req, res) => {
+
+// =========================
+// 🚚 CUSTOMER TRACK API
+// =========================
+app.get("/track/:id", (req, res) => {
   try {
-    const truck = await Truck.findOne({ trackingId: req.params.id });
+    const data = liveLocation[req.params.id];
 
-    if (!truck) {
-      return res.status(404).json({ message: "No data found" });
+    if (!data) {
+      return res.json({
+        message: "No live tracking data yet"
+      });
     }
 
-    res.json(truck);
+    res.json({
+      trackingId: req.params.id,
+      status: data.status,
+      truckNo: data.truckNo,
+      location: `${data.lat},${data.lng}`
+    });
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Test route (IMPORTANT)
-app.get("/", (req, res) => {
-  res.send("MaxxTrack API Running ✅");
+
+// =========================
+// 🔔 OPTIONAL NOTIFICATION
+// =========================
+app.post("/notify", (req, res) => {
+  console.log("Notification:", req.body);
+  res.json({ message: "Notification received" });
 });
 
-// Start server
+
+// =========================
+// 🚀 START SERVER
+// =========================
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on ${PORT}`));
+
+app.listen(PORT, () => {
+  console.log(`MaxxTrack LIVE server running on port ${PORT}`);
+});
