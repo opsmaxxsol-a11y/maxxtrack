@@ -130,3 +130,6 @@ async function checkAssignment(id) {
 setInterval(() => {
   if (trackingId) checkAssignment(trackingId);
 }, 5000);
+if (data.status === "Assigned") {
+  alert(`📦 New Job: ${data.destination}`);
+}
