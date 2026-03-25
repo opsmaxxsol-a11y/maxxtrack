@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Driver Live Tracking</title>
+</head>
+
+<body style="text-align:center; font-family:Arial">
+
+<h2>🚚 Driver Live Tracking</h2>
+
+<p>Tracking ID:</p>
+<input id="trackId" placeholder="Enter Tracking ID"/>
+<button onclick="startTracking()">Start Tracking</button>
+
+<p id="status"></p>
+
+<script>
+let watchId;
+
+function startTracking() {
+  const id = document.getElementById("trackId").value;
+
+  if (!id) {
+    alert("Enter Tracking ID");
+    return;
+  }
+
+  if (!navigator.geolocation) {
+    alert("Geolocation not supported");
+    return;
+  }
+
+  document.getElementById("status").innerText = "Tracking started...";
+
+  watchId = navigator.geolocation.watchPosition(
+    position => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      fetch(`https://maxxtrack.onrender.com/location/${id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ lat, lng })
+      });
+
+      document.getElementById("status").innerText =
+        `Sending location: ${lat}, ${lng}`;
+    },
+    error => {
+      document.getElementById("status").innerText =
+        "Error: " + error.message;
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 5000
+    }
+  );
+}
+</script>
+
+</body>
+</html>
