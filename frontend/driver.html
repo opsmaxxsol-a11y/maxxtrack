@@ -5,7 +5,6 @@
 
   <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json">
-
   <meta name="theme-color" content="#000000">
 </head>
 
@@ -13,22 +12,62 @@
 
 <h2>🚚 MaxxTrack Driver App</h2>
 
-<p>Tracking ID:</p>
-<input id="trackId" placeholder="Enter Tracking ID"/>
-<button onclick="startTracking()">Start Tracking</button>
+<!-- LOGIN SECTION -->
+<div id="loginBox">
+  <p>Enter Tracking ID:</p>
+  <input id="trackId" placeholder="Enter Tracking ID"/>
+  <button onclick="login()">Start Tracking</button>
+</div>
 
+<!-- STATUS -->
 <p id="status"></p>
+<button onclick="logout()" style="margin-top:10px;">Logout</button>
 
 <script>
 let watchId;
+let trackingId = localStorage.getItem("trackingId");
 
-function startTracking() {
+// =====================
+// AUTO START ON LOAD
+// =====================
+window.onload = () => {
+  if (trackingId) {
+    document.getElementById("loginBox").style.display = "none";
+    startTracking(trackingId);
+  }
+};
+
+// =====================
+// LOGIN FUNCTION
+// =====================
+function login() {
   const id = document.getElementById("trackId").value;
 
   if (!id) {
     alert("Enter Tracking ID");
     return;
   }
+
+  localStorage.setItem("trackingId", id);
+  trackingId = id;
+
+  document.getElementById("loginBox").style.display = "none";
+
+  startTracking(id);
+}
+
+// =====================
+// LOGOUT FUNCTION
+// =====================
+function logout() {
+  localStorage.removeItem("trackingId");
+  location.reload();
+}
+
+// =====================
+// START TRACKING
+// =====================
+function startTracking(id) {
 
   if (!navigator.geolocation) {
     alert("Geolocation not supported");
@@ -59,13 +98,15 @@ function startTracking() {
     },
     {
       enableHighAccuracy: true,
-      maximumAge: 0,
-      timeout: 5000
+      maximumAge: 5000,
+      timeout: 10000
     }
   );
 }
 
-// Register Service Worker
+// =====================
+// SERVICE WORKER
+// =====================
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js')
     .then(() => console.log("Service Worker Registered"))
