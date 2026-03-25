@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express = require("express");
+const mongoose = require("mongoose");
 const cors = require("cors");
 
 const app = express();
@@ -8,19 +9,44 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🔥 In-memory storage (no DB)
-let liveLocation = {};
+// =========================
+// 🔌 CONNECT MONGODB
+// =========================
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log("MongoDB Connected ✅"))
+.catch(err => console.log("Mongo Error:", err));
 
-// ✅ Health Check
-app.get("/", (req, res) => {
-  res.send("MaxxTrack LIVE API Running 🚚");
+// =========================
+// 📦 SCHEMA
+// =========================
+const truckSchema = new mongoose.Schema({
+  truckNo: String,
+  status: String,
+  trackingId: String,
+  location: String,
+  destination: String,
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
 });
 
+const Truck = mongoose.model("Truck", truckSchema);
+
+// =========================
+// 🧪 HEALTH CHECK
+// =========================
+app.get("/", (req, res) => {
+  res.send("MaxxTrack Mongo API Running 🚚");
+});
 
 // =========================
 // 📍 DRIVER LOCATION API
 // =========================
-app.post("/location/:id", (req, res) => {
+app.post("/location/:id", async (req, res) => {
   try {
     const { lat, lng } = req.body;
 
@@ -28,17 +54,22 @@ app.post("/location/:id", (req, res) => {
       return res.status(400).json({ message: "Latitude & Longitude required" });
     }
 
-    // Save live location
-    liveLocation[req.params.id] = {
-      lat,
-      lng,
-      status: "In Transit",
-      truckNo: "LIVE-TRUCK"
-    };
+    const location = `${lat},${lng}`;
+
+    // Update or create truck
+    const truck = await Truck.findOneAndUpdate(
+      { trackingId: req.params.id },
+      {
+        location,
+        status: "In Transit",
+        updatedAt: new Date()
+      },
+      { new: true, upsert: true } // 🔥 key line
+    );
 
     res.json({
-      message: "Location updated successfully",
-      trackingId: req.params.id
+      message: "Location updated",
+      data: truck
     });
 
   } catch (err) {
@@ -46,32 +77,31 @@ app.post("/location/:id", (req, res) => {
   }
 });
 
-
 // =========================
-// 🚚 CUSTOMER TRACK API
+// 🚚 TRACK API
 // =========================
-app.get("/track/:id", (req, res) => {
+app.get("/track/:id", async (req, res) => {
   try {
-    const data = liveLocation[req.params.id];
+    const truck = await Truck.findOne({ trackingId: req.params.id });
 
-    if (!data) {
+    if (!truck) {
       return res.json({
-        message: "No live tracking data yet"
+        message: "No tracking data found"
       });
     }
 
     res.json({
-      trackingId: req.params.id,
-      status: data.status,
-      truckNo: data.truckNo,
-      location: `${data.lat},${data.lng}`
+      trackingId: truck.trackingId,
+      status: truck.status,
+      truckNo: truck.truckNo || "LIVE-TRUCK",
+      location: truck.location,
+      destination: truck.destination
     });
 
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
-
 
 // =========================
 // 🔔 OPTIONAL NOTIFICATION
@@ -81,12 +111,11 @@ app.post("/notify", (req, res) => {
   res.json({ message: "Notification received" });
 });
 
-
 // =========================
 // 🚀 START SERVER
 // =========================
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`MaxxTrack LIVE server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
