@@ -42,7 +42,9 @@ function initMap() {
 async function loadAll() {
   const res = await fetch(`${API}/all`);
   const data = await res.json();
-
+if (truck.status === "Delivered") {
+  alert(`✅ Delivered: ${truck.trackingId}`);
+}
   document.getElementById("table").innerHTML = "";
   markers.forEach(m => m.setMap(null));
   markers = [];
