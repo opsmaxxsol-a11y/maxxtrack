@@ -5,7 +5,9 @@ const cors = require("cors");
 
 const app = express();
 
-// Middleware
+// =========================
+// 🔧 MIDDLEWARE
+// =========================
 app.use(cors());
 app.use(express.json());
 
@@ -56,7 +58,6 @@ app.post("/location/:id", async (req, res) => {
 
     const location = `${lat},${lng}`;
 
-    // Update or create truck
     const truck = await Truck.findOneAndUpdate(
       { trackingId: req.params.id },
       {
@@ -64,7 +65,7 @@ app.post("/location/:id", async (req, res) => {
         status: "In Transit",
         updatedAt: new Date()
       },
-      { new: true, upsert: true } // 🔥 key line
+      { new: true, upsert: true }
     );
 
     res.json({
@@ -78,7 +79,7 @@ app.post("/location/:id", async (req, res) => {
 });
 
 // =========================
-// 🚚 TRACK API
+// 🚚 TRACK SINGLE TRUCK
 // =========================
 app.get("/track/:id", async (req, res) => {
   try {
@@ -95,9 +96,22 @@ app.get("/track/:id", async (req, res) => {
       status: truck.status,
       truckNo: truck.truckNo || "LIVE-TRUCK",
       location: truck.location,
-      destination: truck.destination
+      destination: truck.destination,
+      updatedAt: truck.updatedAt
     });
 
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =========================
+// 📊 ADMIN DASHBOARD API (STEP 2)
+// =========================
+app.get("/all", async (req, res) => {
+  try {
+    const trucks = await Truck.find().sort({ updatedAt: -1 });
+    res.json(trucks);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
