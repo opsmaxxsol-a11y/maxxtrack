@@ -1,12 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Driver Live Tracking</title>
+  <title>MaxxTrack Driver</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+
+  <meta name="theme-color" content="#000000">
 </head>
 
 <body style="text-align:center; font-family:Arial">
 
-<h2>🚚 Driver Live Tracking</h2>
+<h2>🚚 MaxxTrack Driver App</h2>
 
 <p>Tracking ID:</p>
 <input id="trackId" placeholder="Enter Tracking ID"/>
@@ -46,11 +51,11 @@ function startTracking() {
       });
 
       document.getElementById("status").innerText =
-        `Sending location: ${lat}, ${lng}`;
+        `📍 Sending: ${lat}, ${lng}`;
     },
     error => {
       document.getElementById("status").innerText =
-        "Error: " + error.message;
+        "❌ Error: " + error.message;
     },
     {
       enableHighAccuracy: true,
@@ -58,6 +63,13 @@ function startTracking() {
       timeout: 5000
     }
   );
+}
+
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js')
+    .then(() => console.log("Service Worker Registered"))
+    .catch(err => console.log("SW Error:", err));
 }
 </script>
 
