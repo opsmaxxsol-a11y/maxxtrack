@@ -4,12 +4,21 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 
 const app = express();
+
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect(process.env.MONGO_URI);
+// MongoDB connect
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log("MongoDB Connected"))
+.catch(err => console.log("Mongo Error:", err));
 
-const Truck = mongoose.model("Truck", {
+// Schema
+const truckSchema = new mongoose.Schema({
   truckNo: String,
   location: String,
   status: String,
@@ -17,36 +26,49 @@ const Truck = mongoose.model("Truck", {
   destination: String
 });
 
+const Truck = mongoose.model("Truck", truckSchema);
+
 // Save GPS
-app.post("/location/:id", async (req,res)=>{
-  const { lat,lng } = req.body;
-  const truck = await Truck.findOneAndUpdate(
-    { trackingId:req.params.id },
-    { location:`${lat},${lng}` },
-    { new:true }
-  );
-  res.send(truck);
-});
+app.post("/location/:id", async (req, res) => {
+  try {
+    const { lat, lng } = req.body;
 
-// Get tracking + ETA
-app.get("/track/:id", async (req,res)=>{
-  const truck = await Truck.findOne({ trackingId:req.params.id });
-  res.send(truck);
-});
+    const truck = await Truck.findOneAndUpdate(
+      { trackingId: req.params.id },
+      { location: `${lat},${lng}` },
+      { new: true }
+    );
 
-// Dummy WhatsApp trigger (integrate Twilio later)
-app.post("/notify", (req,res)=>{
-  console.log("Send WhatsApp:", req.body);
-  res.send("Notification sent");
-});
+    if (!truck) {
+      return res.status(404).json({ message: "Truck not found" });
+    }
 
-app.listen(5000, ()=>console.log("Pro MaxxTrack running"));
-{
-  "name": "backend",
-  "version": "1.0.0",
-  "dependencies": {
-    "express": "^4.18.2",
-    "mongoose": "^7.0.0",
-    "cors": "^2.8.5"
+    res.json(truck);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-}
+});
+
+// Get tracking
+app.get("/track/:id", async (req, res) => {
+  try {
+    const truck = await Truck.findOne({ trackingId: req.params.id });
+
+    if (!truck) {
+      return res.status(404).json({ message: "No data found" });
+    }
+
+    res.json(truck);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Test route (IMPORTANT)
+app.get("/", (req, res) => {
+  res.send("MaxxTrack API Running ✅");
+});
+
+// Start server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on ${PORT}`));
