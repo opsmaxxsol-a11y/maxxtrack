@@ -86,6 +86,26 @@ window.onload = () => {
   loadAll();
 };
 </script>
+<h3>Assign Driver</h3>
+<input id="assignId" placeholder="Tracking ID"/>
+<input id="truckNo" placeholder="Truck No"/>
+<input id="destination" placeholder="Destination"/>
+<button onclick="assign()">Assign</button>
 
+<script>
+async function assign() {
+  const trackingId = document.getElementById("assignId").value;
+  const truckNo = document.getElementById("truckNo").value;
+  const destination = document.getElementById("destination").value;
+
+  await fetch("https://maxxtrack.onrender.com/assign", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ trackingId, truckNo, destination })
+  });
+
+  alert("Driver Assigned!");
+}
+</script>
 </body>
 </html>
