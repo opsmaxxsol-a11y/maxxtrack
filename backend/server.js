@@ -14,10 +14,7 @@ app.use(express.json());
 // =========================
 // 🔌 CONNECT MONGODB
 // =========================
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
+mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log("MongoDB Connected ✅"))
 .catch(err => console.log("Mongo Error:", err));
 
@@ -30,6 +27,7 @@ const truckSchema = new mongoose.Schema({
   trackingId: String,
   location: String,
   destination: String,
+  lastActive: Date, // ✅ NEW
   updatedAt: {
     type: Date,
     default: Date.now
@@ -63,6 +61,7 @@ app.post("/location/:id", async (req, res) => {
       {
         location,
         status: "In Transit",
+        lastActive: new Date(), // ✅ TRACK ACTIVITY
         updatedAt: new Date()
       },
       { new: true, upsert: true }
@@ -91,12 +90,18 @@ app.get("/track/:id", async (req, res) => {
       });
     }
 
+    // ✅ ACTIVE STATUS LOGIC
+    const isActive =
+      truck.lastActive &&
+      (new Date() - new Date(truck.lastActive) < 60000);
+
     res.json({
       trackingId: truck.trackingId,
       status: truck.status,
       truckNo: truck.truckNo || "LIVE-TRUCK",
       location: truck.location,
       destination: truck.destination,
+      active: isActive ? "🟢 Live" : "🔴 Offline",
       updatedAt: truck.updatedAt
     });
 
@@ -106,7 +111,7 @@ app.get("/track/:id", async (req, res) => {
 });
 
 // =========================
-// 📊 ADMIN DASHBOARD API (STEP 2)
+// 📊 ADMIN DASHBOARD API
 // =========================
 app.get("/all", async (req, res) => {
   try {
@@ -118,22 +123,8 @@ app.get("/all", async (req, res) => {
 });
 
 // =========================
-// 🔔 OPTIONAL NOTIFICATION
+// 🚚 ASSIGN DRIVER
 // =========================
-app.post("/notify", (req, res) => {
-  console.log("Notification:", req.body);
-  res.json({ message: "Notification received" });
-});
-
-// =========================
-// 🚀 START SERVER
-// =========================
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-// ASSIGN DRIVER
 app.post("/assign", async (req, res) => {
   try {
     const { trackingId, truckNo, destination } = req.body;
@@ -154,4 +145,21 @@ app.post("/assign", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// =========================
+// 🔔 OPTIONAL NOTIFICATION
+// =========================
+app.post("/notify", (req, res) => {
+  console.log("Notification:", req.body);
+  res.json({ message: "Notification received" });
+});
+
+// =========================
+// 🚀 START SERVER
+// =========================
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
