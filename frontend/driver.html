@@ -2,8 +2,6 @@
 <html>
 <head>
   <title>MaxxTrack Driver</title>
-
-  <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#000000">
 </head>
@@ -12,124 +10,108 @@
 
 <h2>🚚 MaxxTrack Driver App</h2>
 
-<!-- LOGIN SECTION -->
 <div id="loginBox">
-  <p>Enter Tracking ID:</p>
   <input id="trackId" placeholder="Enter Tracking ID"/>
   <button onclick="login()">Start Tracking</button>
 </div>
 
-<!-- STATUS -->
 <p id="status"></p>
-<button onclick="logout()" style="margin-top:10px;">Logout</button>
+<button onclick="logout()">Logout</button>
 
 <script>
-let watchId;
 let trackingId = localStorage.getItem("trackingId");
+let lastSent = 0;
 
-// =====================
-// AUTO START ON LOAD
-// =====================
+// AUTO START
 window.onload = () => {
   if (trackingId) {
     document.getElementById("loginBox").style.display = "none";
-    startTracking(trackingId);
+    startTracking();
   }
 };
 
-// =====================
-// LOGIN FUNCTION
-// =====================
+// LOGIN
 function login() {
   const id = document.getElementById("trackId").value;
-
-  if (!id) {
-    alert("Enter Tracking ID");
-    return;
-  }
+  if (!id) return alert("Enter Tracking ID");
 
   localStorage.setItem("trackingId", id);
   trackingId = id;
 
   document.getElementById("loginBox").style.display = "none";
-
-  startTracking(id);
+  startTracking();
 }
 
-// =====================
-// LOGOUT FUNCTION
-// =====================
+// LOGOUT
 function logout() {
   localStorage.removeItem("trackingId");
   location.reload();
 }
 
-// =====================
+// SEND LOCATION
+function sendLocation(lat, lng) {
+  fetch(`https://maxxtrack.onrender.com/location/${trackingId}`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ lat, lng })
+  });
+
+  document.getElementById("status").innerText =
+    `📍 Sent: ${lat}, ${lng}`;
+}
+
 // START TRACKING
-// =====================
-function startTracking(id) {
+function startTracking() {
 
   if (!navigator.geolocation) {
     alert("Geolocation not supported");
     return;
   }
 
-  document.getElementById("status").innerText = "Tracking started...";
-
-  watchId = navigator.geolocation.watchPosition(
+  navigator.geolocation.watchPosition(
     position => {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
 
-      fetch(`https://maxxtrack.onrender.com/location/${id}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ lat, lng })
-      });
-
-      document.getElementById("status").innerText =
-        `📍 Sending: ${lat}, ${lng}`;
+      // SMART INTERVAL (10 sec)
+      if (Date.now() - lastSent > 10000) {
+        if (navigator.onLine) {
+          sendLocation(lat, lng);
+        } else {
+          // SAVE OFFLINE
+          localStorage.setItem("offlineLocation", JSON.stringify({lat, lng}));
+        }
+        lastSent = Date.now();
+      }
     },
     error => {
       document.getElementById("status").innerText =
-        "❌ Error: " + error.message;
+        "❌ GPS Error: " + error.message;
     },
     {
       enableHighAccuracy: true,
-      maximumAge: 5000,
-      timeout: 10000
+      maximumAge: 10000,
+      timeout: 15000
     }
   );
+
+  // SYNC OFFLINE DATA
+  setInterval(() => {
+    const offline = localStorage.getItem("offlineLocation");
+
+    if (offline && navigator.onLine) {
+      const {lat, lng} = JSON.parse(offline);
+      sendLocation(lat, lng);
+      localStorage.removeItem("offlineLocation");
+    }
+  }, 5000);
 }
 
-// =====================
 // SERVICE WORKER
-// =====================
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js')
-    .then(() => console.log("Service Worker Registered"))
-    .catch(err => console.log("SW Error:", err));
+  navigator.serviceWorker.register('/sw.js');
 }
 </script>
 
 </body>
 </html>
-async function checkAssignment(id) {
-  const res = await fetch(`https://maxxtrack.onrender.com/track/${id}`);
-  const data = await res.json();
-
-  if (data && data.status === "Assigned") {
-    document.getElementById("status").innerText =
-      `📦 Assigned: ${data.destination}`;
-  }
-}
-
-// Call every 5 sec
-setInterval(() => {
-  if (trackingId) checkAssignment(trackingId);
-}, 5000);
-if (data.status === "Assigned") {
-  alert(`📦 New Job: ${data.destination}`);
-}
